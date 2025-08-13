@@ -1,0 +1,17 @@
+{
+    "mongodb": {
+        "command": "docker",
+        "args": [
+            "run",
+            "-i",
+            "--rm",
+            "--network=host",
+            "-e",
+            "MDB_MCP_CONNECTION_STRING",
+            "mcp/mongodb"
+        ],
+        "env": {
+            "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017/"
+        }
+    }
+}
