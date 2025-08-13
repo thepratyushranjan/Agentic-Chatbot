@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useEffect, useRef, useState } from 'react';
@@ -107,6 +106,8 @@ export default function Home() {
     }
   }, [inputValue]);
 
+  // --- REMOVED: Truncation preview logic ---
+
   const sendMessage = async () => {
     const trimmed = inputValue.trim();
     if (!trimmed || loading) return;
@@ -117,10 +118,16 @@ export default function Home() {
     setLoading(true);
 
     try {
+      // Send conversation history along with the new query
+      const conversationHistory = messages.filter(msg => msg.role !== 'system');
+      
       const res = await fetch('/api/chatbot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: trimmed }),
+        body: JSON.stringify({ 
+          query: trimmed,
+          messages: conversationHistory 
+        }),
       });
       const data = await res.json();
 
@@ -128,9 +135,29 @@ export default function Home() {
         throw new Error('Request failed');
       }
 
-      const assistantMessage = { role: 'assistant', content: data.result || 'No response' };
+      // Create assistant message with full content (no truncation)
+      const assistantContent = data.result || 'No response';
+
+      // If there were tool calls, add some context about what was done
+      if (data.toolCalls && data.toolCalls.length > 0) {
+        const toolInfo = data.toolCalls.map(call => call.toolName).join(', ');
+        console.log('Tools used:', toolInfo);
+      }
+
+      const assistantMessage = { 
+        role: 'assistant', 
+        content: assistantContent,
+        shortContent: assistantContent,
+        fullContent: assistantContent,
+        truncated: false,
+        expanded: true,
+        ellipsis: false,
+        toolCalls: data.toolCalls || [],
+        toolResults: data.toolResults || []
+      };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
+      console.error('Chat error:', error);
       const errorMessage = {
         role: 'assistant',
         content: 'Sorry, something went wrong. Please try again.',
@@ -156,6 +183,18 @@ export default function Home() {
       e.preventDefault();
       void sendMessage();
     }
+  };
+
+  const toggleExpand = (index) => {
+    setMessages((prev) => prev.map((m, i) => {
+      if (i !== index) return m;
+      const expanded = !m.expanded;
+      return {
+        ...m,
+        expanded,
+        content: expanded ? (m.fullContent ?? m.content) : (m.shortContent ?? m.content)
+      };
+    }));
   };
 
   const renderAvatar = (role) => (
@@ -214,6 +253,18 @@ export default function Home() {
                 >
                   {msg.content}
                 </ReactMarkdown>
+
+                {msg.role === 'assistant' && msg.truncated && (
+                  <div style={{ marginTop: 8 }}>
+                    <button
+                      className="clear-chat-btn"
+                      style={{ padding: '4px 8px', fontSize: 12 }}
+                      onClick={() => toggleExpand(idx)}
+                    >
+                      {msg.expanded ? 'Show less' : 'Show more'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -224,9 +275,16 @@ export default function Home() {
             <div className="message assistant">
               {renderAvatar('assistant')}
               <div className="bubble assistant typing">
-                <span className="dot" />
-                <span className="dot" />
-                <span className="dot" />
+                <div>
+                  <span className="dot" />
+                  <span className="dot" />
+                  <span className="dot" />
+                </div>
+                {mcpStatus.connected && mcpStatus.tools.length > 0 && (
+                  <div className="tool-indicator">
+                    <span>🔧 MongoDB tools available</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

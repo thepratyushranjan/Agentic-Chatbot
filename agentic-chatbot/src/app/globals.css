@@ -168,13 +168,37 @@ body {
   border-color: transparent;
 }
 
-.typing { display: inline-flex; gap: 6px; align-items: center; }
+.typing { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+  align-items: center; 
+}
+
+.typing > div:first-child {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .dot {
   width: 7px; height: 7px; background: var(--text-secondary); border-radius: 50%;
   animation: blink 1.4s infinite both;
 }
+.dot:nth-child(1) { animation-delay: 0s; }
 .dot:nth-child(2) { animation-delay: 0.2s; }
 .dot:nth-child(3) { animation-delay: 0.4s; }
+
+.tool-indicator {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 @keyframes blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
 
 /* --- MCP STATUS INDICATOR --- */
