@@ -490,3 +490,29 @@ body {
   background: transparent;
   padding: 0;
 }
+
+.response-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.code-container {
+  background: #0b0f14;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin-top: 1em;
+  overflow: hidden;
+}
+
+.code-container pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.tool-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+}
