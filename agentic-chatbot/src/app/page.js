@@ -52,12 +52,12 @@ function CodeBlock({ inline, className, children, ...props }) {
 export default function Page() {
   // Messages: { role: 'user'|'assistant', content: string }
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi! Ask me anything. I can help you query and analyze your MongoDB databases.' },
+    { role: 'assistant', content: 'Welcome to FinOps Assistant! How can I help with your cloud costs today?' },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // MCP status (flatten providers map from /api/mcp-status)
+  // MCP status (  providers map from /api/mcp-status)
   const [mcpStatus, setMcpStatus] = useState({ checking: true, connected: false, totalTools: 0, tools: [], error: null });
 
   const endRef = useRef(null);
@@ -167,11 +167,11 @@ export default function Page() {
         <div className="header-content">
           <div className="brand">
             <AssistantIcon />
-            AI Assistant
+            FinOps Assistant
           </div>
           <button 
             type="button" 
-            onClick={() => setMessages([{ role: 'assistant', content: 'New chat started. How can I help you?' }])} 
+            onClick={() => setMessages([{ role: 'assistant', content: 'Welcome to FinOps Assistant! How can I help with your cloud costs today?' }])} 
             className="clear-chat-btn"
           >
             New Chat
