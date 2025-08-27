@@ -22,6 +22,18 @@ const SendIcon = () => (
     <path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405z" />
   </svg>
 );
+const ChevronIcon = ({ isOpen }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2"
+    className={`chevron-icon ${isOpen ? 'open' : ''}`}
+    aria-hidden="true"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+);
 
 // Copy-enabled code block for markdown
 function CodeBlock({ inline, className, children, ...props }) {
@@ -49,15 +61,46 @@ function CodeBlock({ inline, className, children, ...props }) {
   return <code className={className} {...props}>{children}</code>;
 }
 
+// Collapsible Reasoning Component
+function ReasoningSection({ reasoning }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (!reasoning) return null;
+
+  return (
+    <div className="reasoning-section">
+      <button 
+        className="reasoning-toggle"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls="reasoning-content"
+      >
+        <ChevronIcon isOpen={isOpen} />
+        <span className="reasoning-label">Reasoning</span>
+      </button>
+      {isOpen && (
+        <div id="reasoning-content" className="reasoning-content">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+          >
+            {reasoning}
+          </ReactMarkdown>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Page() {
-  // Messages: { role: 'user'|'assistant', content: string }
+  // Messages now include reasoning: { role: 'user'|'assistant', content: string, reasoning?: string }
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Welcome to FinOps Assistant! How can I help with your cloud costs today?' },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // MCP status (  providers map from /api/mcp-status)
+  // MCP status (providers map from /api/mcp-status)
   const [mcpStatus, setMcpStatus] = useState({ checking: true, connected: false, totalTools: 0, tools: [], error: null });
 
   const endRef = useRef(null);
@@ -117,7 +160,9 @@ export default function Page() {
 
     try {
       // Pass prior conversation (excluding any system-only entries)
-      const history = messages.filter(m => m.role !== 'system');
+      const history = messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role, content: m.content })); // Strip reasoning from history
 
       const res = await fetch('/api/chatbot', {
         method: 'POST',
@@ -128,15 +173,19 @@ export default function Page() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Request failed');
 
-      // Only store the natural language response
+      // Store both the response and reasoning
       const assistant = {
         role: 'assistant',
         content: typeof data?.result === 'string' ? data.result : 'I processed your request successfully.',
+        reasoning: data?.reasoning || null,
       };
 
       setMessages((prev) => [...prev, assistant]);
     } catch (err) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Something went wrong.'}` }]);
+      setMessages((prev) => [...prev, { 
+        role: 'assistant', 
+        content: `Error: ${err.message || 'Something went wrong.'}` 
+      }]);
     } finally {
       setLoading(false);
       textRef.current?.focus();
@@ -204,16 +253,21 @@ export default function Page() {
             <div className={`message ${msg.role}`}>
               {renderAvatar(msg.role)}
               <div className={`bubble ${msg.role}`}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
-                  components={{
-                    code: CodeBlock,
-                    a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
+                {msg.role === 'assistant' && msg.reasoning && (
+                  <ReasoningSection reasoning={msg.reasoning} />
+                )}
+                <div className="message-content">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                    components={{
+                      code: CodeBlock,
+                      a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           </div>
