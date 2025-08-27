@@ -1,11 +1,8 @@
-// app/api/chatbot/route.js
 import { NextResponse } from 'next/server';
 import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
-
 import { loadAllMCPTools } from '../../../lib/mcp.js';
 import {
-  AGENT_POLICY,
   planTools,
   filterTools,
   buildToolSet,
@@ -13,6 +10,7 @@ import {
   loadDomainInstruction,
   ensureMeaningfulResponse,
 } from '../../../lib/agent.js';
+import { AGENT_POLICY, FORMAT_DIRECTIVE } from '../../../../prompt/constant_prompt.js';
 
 export const runtime = 'nodejs';
 
@@ -47,48 +45,6 @@ function buildConversation(systemText, history, userQuery) {
   ];
 }
 
-// Enhanced formatting directive for natural language responses
-const FORMAT_DIRECTIVE = `
-CRITICAL OUTPUT REQUIREMENTS:
-1. NEVER respond with just "Done" or minimal responses
-2. ALWAYS provide detailed, natural language explanations of what you found
-3. When presenting data from tools:
-   - Start with a summary (e.g., "I found X documents matching your query")
-   - Format results using Markdown: ### for headings, **bold** for emphasis, bullet points for lists
-   - For documents: Show key fields in a readable format
-   - For stats: Convert bytes to MB/GB, format numbers with commas
-   - For lists: Use numbered or bulleted lists
-4. If no results found, explain that clearly
-5. Always provide context about what the data means
-
-Example good response:
-"### Query Results
-I found **X results** matching your request. Here’s a summary:
-
-1. **User: John Doe**
-   - Email: john@example.com
-   - Role: admin
-   - Created: January 15, 2024
-
-2. **User: Jane Smith**
-   - Email: jane@example.com
-   - Role: user
-   - Created: February 20, 2024"
-
-Example bad response:
-"Done."
-
-Tone & Guardrails:
-- Maintain a professional, confident tone throughout all interactions
-- Avoid using sentiments like 'sorry', 'please', or any form of apology
-- Respond appropriately and professionally to abusive or sexually explicit language
-- Stay focused on the task at hand and provide direct, helpful responses
-- Use clear, authoritative language without being overly formal
-- Keep it professional, concise, and clear
-- Always explain what the result means in context
-- Never show DB/collection names → Present as if it's a simple report, not a query dump
-- No unnecessary filler words like "as requested, here is the data" → Go straight to the summary
-`;
 
 // --- route ----------------------------------------------------------------
 
