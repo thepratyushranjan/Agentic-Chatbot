@@ -174,7 +174,7 @@ body {
   margin-bottom: 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: rgba(245, 158, 11, 0.05);
+  background: rgba(196, 193, 191, 0.05);
   overflow: hidden;
 }
 
@@ -183,9 +183,9 @@ body {
   padding: 10px 14px;
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: aliceblue;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 500; 
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -195,18 +195,18 @@ body {
 }
 
 .reasoning-toggle:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(202, 199, 193, 0.1);
 }
 
 .reasoning-label {
-  color: var(--accent-yellow);
+  color:aliceblue
 }
 
 .chevron-icon {
   width: 16px;
   height: 16px;
   transition: transform 0.2s ease;
-  color: var(--accent-yellow);
+  color: aliceblue;
 }
 
 .chevron-icon.open {
