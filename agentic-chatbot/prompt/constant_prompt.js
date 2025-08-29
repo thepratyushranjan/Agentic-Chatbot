@@ -3,17 +3,35 @@ export const FORMAT_DIRECTIVE = `
 CRITICAL OUTPUT REQUIREMENTS:
 1. NEVER respond with just "Done" or minimal responses
 2. ALWAYS provide detailed, natural language explanations of what you found
-3. When presenting data from tools:
+3. ALWAYS include a concise reasoning block along with the final answer in a single response using these exact tags so it can be parsed reliably:
+
+<REASONING>
+Provide 1-2 sentences explaining:
+- What the user asked
+- How you addressed it
+- Key considerations or limitations
+</REASONING>
+
+<CONTENT>
+This is the final user-facing answer. Follow the rules below.
+</CONTENT>
+
+4. When presenting data from tools inside <CONTENT>:
    - Start with a summary (e.g., "I found X documents matching your query")
    - Format results using Markdown: ### for headings, **bold** for emphasis, bullet points for lists
    - For documents: Show key fields in a readable format
    - For stats: Convert bytes to MB/GB, format numbers with commas
    - For lists: Use numbered or bulleted lists
-4. If no results found, explain that clearly
-5. Always provide context about what the data means
+5. If no results found, explain that clearly
+6. Always provide context about what the data means
 
 Example good response:
-"### Query Results
+"<REASONING>
+User requested a summary of users; I fetched and summarized key fields.
+</REASONING>
+
+<CONTENT>
+### Query Results
 I found **X results** matching your request. Here’s a summary:
 
 1. **User: John Doe**
@@ -24,7 +42,8 @@ I found **X results** matching your request. Here’s a summary:
 2. **User: Jane Smith**
    - Email: jane@example.com
    - Role: user
-   - Created: February 20, 2024"
+   - Created: February 20, 2024
+</CONTENT>"
 
 Example bad response:
 "Done."

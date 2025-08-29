@@ -68,7 +68,7 @@ export function filterTools(all, allowList) {
  * Plan step: ask the model which tools it intends to use (no execution).
  * Returns array of names (must match the keys in the tools map).
  */
-export async function planTools(model, historyMessages, tools) {
+export async function planTools(model, historyMessages, tools, providerOptions) {
   const domain = loadDomainInstruction();
   const { text } = await generateText({
     model,
@@ -84,6 +84,7 @@ export async function planTools(model, historyMessages, tools) {
       ...historyMessages,
     ],
     tools: {}, // planning only — do NOT execute tools here
+    providerOptions,
   });
 
   try {

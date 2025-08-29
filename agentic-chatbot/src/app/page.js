@@ -1,4 +1,3 @@
-// app/page.js
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -6,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 
-// Minimal icons (inline SVG)
+
 const AssistantIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="icon" aria-hidden="true">
     <path d="M15.5 2.25a.75.75 0 0 0-1.06 1.06L15.19 4H8.81l.75-.75a.75.75 0 1 0-1.06-1.06L7.25 3.5H3.75a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h16.5a2 2 0 0 0 2-2v-13a2 2 0 0 0-2-2h-3.5L15.5 2.25zM4.75 6.5a1 1 0 0 1 1-1h12.5a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H5.75a1 1 0 0 1-1-1v-9.5zm2 2a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 3a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5z" />
@@ -164,23 +163,67 @@ export default function Page() {
         .filter(m => m.role !== 'system')
         .map(m => ({ role: m.role, content: m.content })); // Strip reasoning from history
 
-      const res = await fetch('/api/chatbot', {
+      const res = await fetch('/api/chatbot?stream=1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: trimmed, messages: history }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Request failed');
+      if (!res.ok) {
+        let errText = 'Request failed';
+        try { const j = await res.json(); errText = j?.error || errText; } catch {}
+        throw new Error(errText);
+      }
 
-      // Store both the response and reasoning
-      const assistant = {
-        role: 'assistant',
-        content: typeof data?.result === 'string' ? data.result : 'I processed your request successfully.',
-        reasoning: data?.reasoning || null,
+      // Insert placeholder assistant message to stream into
+      const assistantIndexRef = { index: -1 };
+      setMessages((prev) => {
+        const idx = prev.length;
+        assistantIndexRef.index = idx;
+        return [...prev, { role: 'assistant', content: '', reasoning: null }];
+      });
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const processLine = (line) => {
+        if (!line) return;
+        try {
+          const evt = JSON.parse(line);
+          if (evt.type === 'content' && typeof evt.delta === 'string') {
+            setMessages((prev) => {
+              const copy = [...prev];
+              const idx = assistantIndexRef.index >= 0 ? assistantIndexRef.index : (copy.length - 1);
+              const current = copy[idx] || { role: 'assistant', content: '', reasoning: null };
+              copy[idx] = { ...current, content: (current.content || '') + evt.delta };
+              return copy;
+            });
+          } else if (evt.type === 'reasoning') {
+            setMessages((prev) => {
+              const copy = [...prev];
+              const idx = assistantIndexRef.index >= 0 ? assistantIndexRef.index : (copy.length - 1);
+              const current = copy[idx] || { role: 'assistant', content: '', reasoning: null };
+              copy[idx] = { ...current, reasoning: evt.content || null };
+              return copy;
+            });
+          } else if (evt.type === 'error') {
+            throw new Error(evt.error || 'Stream error');
+          }
+        } catch {}
       };
 
-      setMessages((prev) => [...prev, assistant]);
+      while (reader) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 1);
+          processLine(line);
+        }
+      }
     } catch (err) {
       setMessages((prev) => [...prev, { 
         role: 'assistant', 
