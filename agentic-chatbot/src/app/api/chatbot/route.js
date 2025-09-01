@@ -58,9 +58,14 @@ function sanitizeHistory(msgs = []) {
 }
 
 // Build a full conversation with exactly one system message at the start
-function buildConversation(systemText, history, userQuery) {
+function buildConversation(systemText, history, userQuery, toolsExecuted = false) {
+  // Inject tool execution status into system prompt
+  const enhancedSystemText = systemText + (toolsExecuted 
+    ? "\n\nIMPORTANT: Database tools were executed in this response. Include a relevant follow-up question."
+    : "\n\nIMPORTANT: No database tools were executed in this response. Do NOT include any follow-up question.");
+    
   return [
-    { role: "system", content: systemText },
+    { role: "system", content: enhancedSystemText },
     ...sanitizeHistory(history),
     { role: "user", content: userQuery },
   ];
@@ -115,13 +120,6 @@ REMEMBER: You MUST interpret ALL tool results into natural, readable language. N
 
 ${FORMAT_DIRECTIVE}`;
 
-    // Base conversation (single system at the very beginning)
-    const baseMessages = buildConversation(
-      enhancedSystemPrompt,
-      history,
-      query
-    );
-
     const BUDGET_PLAN = getEnvInt("THINKING_BUDGET_PLAN");
     const BUDGET_EXECUTE = getEnvInt(
       "THINKING_BUDGET_EXECUTE",
@@ -139,13 +137,21 @@ ${FORMAT_DIRECTIVE}`;
 
     const execTools = filterTools(safeTools, plannedToolNames);
 
+    // Track if tools were actually executed
+    let toolsWereExecuted = false;
+
     // EXECUTE (agentic, auto tool calls)
     const timeoutMs = Number(process.env.CHATBOT_RESPONSE_TIMEOUT_MS);
     const runGen = withTimeout(
       (signal) =>
         generateText({
           model,
-          messages: baseMessages,
+          messages: buildConversation(
+            enhancedSystemPrompt,
+            history,
+            query,
+            false // initial run, no tools executed yet
+          ),
           tools: execTools,
           maxToolRoundtrips: 16,
           signal,
@@ -155,6 +161,11 @@ ${FORMAT_DIRECTIVE}`;
     );
 
     let result = await runGen.run();
+    
+    // Check if tools were executed
+    if (result.toolCalls && result.toolCalls.length > 0) {
+      toolsWereExecuted = true;
+    }
 
     // Nudge: if DB-like and no tool used, force a tools-first retry
     if (
@@ -171,7 +182,8 @@ CRITICAL: This query is database-related. You MUST:
 
 ${FORMAT_DIRECTIVE}`,
         history,
-        query
+        query,
+        false // retry, tools not yet executed
       );
 
       result = await generateText({
@@ -181,6 +193,11 @@ ${FORMAT_DIRECTIVE}`,
         maxToolRoundtrips: 16,
         providerOptions: buildProviderOptions(BUDGET_RETRY),
       });
+      
+      // Update tool execution status
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        toolsWereExecuted = true;
+      }
     }
 
     // Check if response is too minimal and force re-interpretation
@@ -202,7 +219,8 @@ ${FORMAT_DIRECTIVE}
 
 Tool results to interpret: ${JSON.stringify(result.toolResults)}
 
-Provide a detailed, natural language explanation of what was found.`,
+Provide a detailed, natural language explanation of what was found.
+${toolsWereExecuted ? "Include a relevant follow-up question since database tools were executed." : "Do NOT include any follow-up question."}`,
           },
           {
             role: "user",
@@ -210,19 +228,14 @@ Provide a detailed, natural language explanation of what was found.`,
           },
         ];
 
-        const interpretResult = streamText({
+        const interpretResult = await generateText({
           model,
           messages: interpretMessages,
           tools: {}, // No tools for interpretation phase
           providerOptions: buildProviderOptions(BUDGET_INTERPRET),
         });
 
-        let interpretText = "";
-        for await (const delta of interpretResult.textStream) {
-          interpretText += delta;
-        }
-
-        finalText = interpretText || finalText;
+        finalText = interpretResult.text || finalText;
       }
     }
 
@@ -239,7 +252,7 @@ Provide a detailed, natural language explanation of what was found.`,
       return null;
     };
 
-    const reasoningText = extractBetween(finalText, '<REASONING>', '</REASONING>');
+    const reasoningText = extractBetween(finalText, '<EXPLANATION>', '</EXPLANATION>');
     const contentText = extractBetween(finalText, '<CONTENT>', '</CONTENT>') || finalText;
 
     if (streamMode) {
@@ -264,13 +277,14 @@ Provide a detailed, natural language explanation of what was found.`,
               )
             );
 
-            // Diagnostics (optional)
+            // Diagnostics (optional) - include tool execution status
             controller.enqueue(
               encoder.encode(
                 JSON.stringify({
                   type: "meta",
                   plannedTools: plannedToolNames,
                   toolCalls: result.toolCalls || [],
+                  toolsExecuted: toolsWereExecuted,
                 }) + "\n"
               )
             );
@@ -302,6 +316,7 @@ Provide a detailed, natural language explanation of what was found.`,
       plannedTools: plannedToolNames,
       toolCalls: result.toolCalls || [],
       toolResults: result.toolResults || [],
+      toolsExecuted: toolsWereExecuted,
     });
   } catch (err) {
     const isAbort = err?.name === "AbortError";
