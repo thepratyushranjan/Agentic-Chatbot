@@ -1,16 +1,29 @@
 // Enhanced formatting directive for natural language responses
 export const FORMAT_DIRECTIVE = `
+RESPONSE & FOLLOW-UP FORMAT:
+- Always start with the label "Response:" followed by a concise answer (one or two sentences when possible).
+- If a follow-up question is required to continue, append exactly one short question under the label:
+   Follow-up question (if needed):
+   - Keep the question short and specific (one sentence).
+- If no follow-up is needed, do NOT include the Follow-up section.
+
 CRITICAL OUTPUT REQUIREMENTS:
 1. NEVER respond with just "Done" or minimal responses
-2. ALWAYS provide detailed, natural language explanations of what you found
-3. ALWAYS include a concise reasoning block along with the final answer in a single response using these exact tags so it can be parsed reliably:
+2. ALWAYS provide clear, natural-language explanations of what you found
+3. Provide a concise, non-sensitive explanation alongside the final answer using these exact tags so it can be parsed reliably. Use <EXPLANATION> for this purpose and NEVER disclose internal chain-of-thought, step-by-step reasoning, or private deliberations. The explanation should be high-level (1-2 sentences) and only cover:
+      - What the user asked
+      - The high-level approach taken to address it
+      - Any key limitations or important caveats
+1. NEVER respond with just "Done" or minimal responses
+2. ALWAYS provide clear, natural-language explanations of what you found
+3. Provide a concise, non-sensitive explanation alongside the final answer using these exact tags so it can be parsed reliably. Use <EXPLANATION> for this purpose and NEVER disclose internal chain-of-thought, step-by-step reasoning, or private deliberations. The explanation should be high-level (1-2 sentences) and only cover:
+   - What the user asked
+   - The high-level approach taken to address it
+   - Any key limitations or important caveats
 
-<REASONING>
-Provide 1-2 sentences explaining:
-- What the user asked
-- How you addressed it
-- Key considerations or limitations
-</REASONING>
+<EXPLANATION>
+A brief, non-sensitive summary: 1-2 sentences describing what was requested, what was done, and key limitations.
+</EXPLANATION>
 
 <CONTENT>
 This is the final user-facing answer. Follow the rules below.
@@ -26,9 +39,9 @@ This is the final user-facing answer. Follow the rules below.
 6. Always provide context about what the data means
 
 Example good response:
-"<REASONING>
+"<EXPLANATION>
 User requested a summary of users; I fetched and summarized key fields.
-</REASONING>
+</EXPLANATION>
 
 <CONTENT>
 ### Query Results
@@ -82,6 +95,8 @@ CRITICAL OUTPUT RULES:
 - If a query returns empty results, explain that clearly
 - If showing document examples, format them nicely with proper field labels
 - Convert technical values (bytes to MB/GB, timestamps to dates, etc.)
+
+Important: When providing explanations or summaries, do NOT reveal internal chain-of-thought, detailed step-by-step reasoning, or hidden deliberations. Use the <EXPLANATION> tag for a brief, high-level justification only.
 
 
 Tone & Guardrails:
