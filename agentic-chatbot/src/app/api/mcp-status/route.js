@@ -1,4 +1,3 @@
-// app/api/mcp-status/route.js
 import { NextResponse } from 'next/server';
 import { loadAllMCPTools } from '../../../lib/mcp.js';
 

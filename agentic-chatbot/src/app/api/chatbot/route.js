@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { loadAllMCPTools } from "../../../lib/mcp.js";
 import {
   planTools,
@@ -32,6 +32,24 @@ function withTimeout(promiseFactory, ms) {
   return { run };
 }
 
+// Thinking budget helpers ----------------------------------------------------
+function getEnvInt(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || raw === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function buildProviderOptions(budget) {
+  return {
+    google: {
+      generationConfig: {
+        thinkingConfig: { thinkingBudget: budget },
+      },
+    },
+  };
+}
+
 // Keep only user/assistant roles from client history (defensive)
 function sanitizeHistory(msgs = []) {
   return msgs
@@ -40,48 +58,19 @@ function sanitizeHistory(msgs = []) {
 }
 
 // Build a full conversation with exactly one system message at the start
-function buildConversation(systemText, history, userQuery) {
+function buildConversation(systemText, history, userQuery, toolsExecuted = false) {
+  // Inject tool execution status into system prompt
+  const enhancedSystemText = systemText + (toolsExecuted 
+    ? "\n\nIMPORTANT: Database tools were executed in this response. Include a relevant follow-up question."
+    : "\n\nIMPORTANT: No database tools were executed in this response. Do NOT include any follow-up question.");
+    
   return [
-    { role: "system", content: systemText },
+    { role: "system", content: enhancedSystemText },
     ...sanitizeHistory(history),
     { role: "user", content: userQuery },
   ];
 }
 
-// Generate reasoning for the response
-async function generateReasoning(
-  model,
-  query,
-  response,
-) {
-  const reasoningPrompt = `You are analyzing a database query interaction. Generate a concise reasoning that explains:
-1. What the user is asking for
-2. How the response addresses the user's needs
-3. Any important considerations or limitations
-
-User Query: "${query}"
-
-Response Generated: "${response}"
-
-
-Provide a clear, professional reasoning in 1-2 sentences. Focus on the logic and approach, not implementation details.`;
-
-  try {
-    const { text } = await generateText({
-      model,
-      messages: [
-        { role: "system", content: reasoningPrompt },
-        { role: "user", content: "Generate the reasoning." },
-      ],
-      tools: {}, // No tools for reasoning generation
-    });
-
-    return text || "Analysis completed based on the query requirements.";
-  } catch (err) {
-    console.error("Error generating reasoning:", err);
-    return "Query processed and response generated based on available data.";
-  }
-}
 
 // --- route ----------------------------------------------------------------
 
@@ -89,6 +78,8 @@ export async function POST(req) {
   let resources = null;
 
   try {
+    const url = new URL(req.url);
+    const streamMode = url.searchParams.get("stream") === "1";
     const body = await req.json();
     const query = typeof body?.query === "string" ? body.query.trim() : "";
     const history = Array.isArray(body?.messages) ? body.messages : [];
@@ -129,37 +120,52 @@ REMEMBER: You MUST interpret ALL tool results into natural, readable language. N
 
 ${FORMAT_DIRECTIVE}`;
 
-    // Base conversation (single system at the very beginning)
-    const baseMessages = buildConversation(
-      enhancedSystemPrompt,
-      history,
-      query
+    const BUDGET_PLAN = getEnvInt("THINKING_BUDGET_PLAN");
+    const BUDGET_EXECUTE = getEnvInt(
+      "THINKING_BUDGET_EXECUTE",
+      looksDbRelated(query) ? 512 : 256
     );
+    const BUDGET_RETRY = getEnvInt("THINKING_BUDGET_RETRY");
+    const BUDGET_INTERPRET = getEnvInt("THINKING_BUDGET_INTERPRET");
 
-    // PLAN step (no tool execution) → which tools to allow?
     const plannedToolNames = await planTools(
       model,
       [...sanitizeHistory(history), { role: "user", content: query }],
-      safeTools
+      safeTools,
+      buildProviderOptions(BUDGET_PLAN)
     );
 
     const execTools = filterTools(safeTools, plannedToolNames);
 
+    // Track if tools were actually executed
+    let toolsWereExecuted = false;
+
     // EXECUTE (agentic, auto tool calls)
-    const timeoutMs = Number(process.env.CHATBOT_RESPONSE_TIMEOUT_MS || 45000);
+    const timeoutMs = Number(process.env.CHATBOT_RESPONSE_TIMEOUT_MS);
     const runGen = withTimeout(
       (signal) =>
         generateText({
           model,
-          messages: baseMessages,
+          messages: buildConversation(
+            enhancedSystemPrompt,
+            history,
+            query,
+            false // initial run, no tools executed yet
+          ),
           tools: execTools,
           maxToolRoundtrips: 16,
           signal,
+          providerOptions: buildProviderOptions(BUDGET_EXECUTE),
         }),
       timeoutMs
     );
 
     let result = await runGen.run();
+    
+    // Check if tools were executed
+    if (result.toolCalls && result.toolCalls.length > 0) {
+      toolsWereExecuted = true;
+    }
 
     // Nudge: if DB-like and no tool used, force a tools-first retry
     if (
@@ -176,7 +182,8 @@ CRITICAL: This query is database-related. You MUST:
 
 ${FORMAT_DIRECTIVE}`,
         history,
-        query
+        query,
+        false // retry, tools not yet executed
       );
 
       result = await generateText({
@@ -184,7 +191,13 @@ ${FORMAT_DIRECTIVE}`,
         messages: forcedMessages,
         tools: execTools,
         maxToolRoundtrips: 16,
+        providerOptions: buildProviderOptions(BUDGET_RETRY),
       });
+      
+      // Update tool execution status
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        toolsWereExecuted = true;
+      }
     }
 
     // Check if response is too minimal and force re-interpretation
@@ -206,7 +219,8 @@ ${FORMAT_DIRECTIVE}
 
 Tool results to interpret: ${JSON.stringify(result.toolResults)}
 
-Provide a detailed, natural language explanation of what was found.`,
+Provide a detailed, natural language explanation of what was found.
+${toolsWereExecuted ? "Include a relevant follow-up question since database tools were executed." : "Do NOT include any follow-up question."}`,
           },
           {
             role: "user",
@@ -218,6 +232,7 @@ Provide a detailed, natural language explanation of what was found.`,
           model,
           messages: interpretMessages,
           tools: {}, // No tools for interpretation phase
+          providerOptions: buildProviderOptions(BUDGET_INTERPRET),
         });
 
         finalText = interpretResult.text || finalText;
@@ -227,21 +242,81 @@ Provide a detailed, natural language explanation of what was found.`,
     // Use fallback if still minimal
     finalText = ensureMeaningfulResponse(finalText, result.toolResults);
 
-    // Generate reasoning for the response
-    const reasoning = await generateReasoning(
-      model,
-      query,
-      finalText,
-      result.toolCalls || [],
-      result.toolResults || []
-    );
+    // Parse optional reasoning/content blocks from a single model response
+    const extractBetween = (text, startTag, endTag) => {
+      const start = text.indexOf(startTag);
+      const end = text.indexOf(endTag);
+      if (start !== -1 && end !== -1 && end > start) {
+        return text.slice(start + startTag.length, end).trim();
+      }
+      return null;
+    };
 
+    const reasoningText = extractBetween(finalText, '<EXPLANATION>', '</EXPLANATION>');
+    const contentText = extractBetween(finalText, '<CONTENT>', '</CONTENT>') || finalText;
+
+    if (streamMode) {
+      const stream = new ReadableStream({
+        async start(controller) {
+          const encoder = new TextEncoder();
+          try {
+            // Stream the assistant content as NDJSON chunks
+            const chunkSize = 30; // characters per chunk for smoother UI
+            for (let i = 0; i < contentText.length; i += chunkSize) {
+              const part = contentText.slice(i, i + chunkSize);
+              const line = JSON.stringify({ type: "content", delta: part }) + "\n";
+              controller.enqueue(encoder.encode(line));
+              // small pacing to allow UI updates
+              await new Promise((r) => setTimeout(r, 10));
+            }
+
+            // Stream reasoning if present (same model call output)
+            controller.enqueue(
+              encoder.encode(
+                JSON.stringify({ type: "reasoning", content: reasoningText || null }) + "\n"
+              )
+            );
+
+            // Diagnostics (optional) - include tool execution status
+            controller.enqueue(
+              encoder.encode(
+                JSON.stringify({
+                  type: "meta",
+                  plannedTools: plannedToolNames,
+                  toolCalls: result.toolCalls || [],
+                  toolsExecuted: toolsWereExecuted,
+                }) + "\n"
+              )
+            );
+
+            controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
+            controller.close();
+          } catch (e) {
+            controller.enqueue(
+              encoder.encode(JSON.stringify({ type: "error", error: e?.message || "stream error" }) + "\n")
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    // Non-streaming JSON response (single call output)
     return NextResponse.json({
-      result: finalText,
-      reasoning: reasoning, // Add reasoning to response
+      result: contentText,
+      reasoning: reasoningText,
       plannedTools: plannedToolNames,
       toolCalls: result.toolCalls || [],
-      toolResults: result.toolResults || [], // Keep for debugging
+      toolResults: result.toolResults || [],
+      toolsExecuted: toolsWereExecuted,
     });
   } catch (err) {
     const isAbort = err?.name === "AbortError";
