@@ -1,0 +1,2 @@
+# Ignore local Docker Compose with secrets
+/docker-compose.yml
