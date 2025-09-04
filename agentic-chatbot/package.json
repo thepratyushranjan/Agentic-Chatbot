@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.5",
-    "@ai-sdk/react": "^2.0.11",
+    "@ai-sdk/react": "^2.0.30",
     "@modelcontextprotocol/sdk": "^1.17.2",
-    "next": "15.4.6",
+    "@nanostores/react": "github:ai/react",
+    "ai": "^5.0.30",
+    "next": "^15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-markdown": "^10.1.0",
