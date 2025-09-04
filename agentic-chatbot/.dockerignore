@@ -1,0 +1,33 @@
+# Reduce Docker build context for the Next.js app
+# Node-related
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js build output
+.next
+out
+dist
+*.tsbuildinfo
+.cache
+
+# Env files (keep example)
+.env
+.env.*
+!.env.example
+
+# VCS/editor
+.git
+.gitignore
+.vscode
+.idea
+
+# OS junk
+**/.DS_Store
+Thumbs.db
+
+# Misc
+coverage
+tmp
