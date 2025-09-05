@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import ChatWidget from './frontend/ChatWidget';
 
 
 const AssistantIcon = () => (
@@ -254,6 +255,7 @@ export default function Page() {
   );
 
   return (
+   <>
     <div className="chat-wrapper">
       <header className="chat-header">
         <div className="header-content">
@@ -350,5 +352,9 @@ export default function Page() {
         </button>
       </form>
     </div>
+    <div>
+      <ChatWidget />
+    </div>
+    </>
   );
 }
