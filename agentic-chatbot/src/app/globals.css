@@ -2,7 +2,7 @@
   color-scheme: dark;
   --bg-primary: #0b0e11;
   --bg-secondary: #111827;
-  --bg-tertiary: #1f2937;
+  --bg-tertiary: #babec0;
   --text-primary: #e5e7eb;
   --text-secondary: #9ca3af;
   --border-color: rgba(255, 255, 255, 0.1);
@@ -152,7 +152,7 @@ body {
 /* Message Bubble styles */
 .bubble {
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 11.5px 13px;
   line-height: 1.6;
   font-size: 15px;
   border: 1px solid var(--border-color);
@@ -247,6 +247,7 @@ body {
 
 .message-content {
   /* Container for the main message content after reasoning */
+  position: relative;
 }
 
 /* --- TYPING ANIMATION --- */
@@ -596,4 +597,199 @@ body {
   flex-direction: column;
   gap: 12px;
   padding-bottom: 20px;
+}
+
+/* --- MARKDOWN TABLE STYLES --- */
+.bubble table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.bubble thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.bubble th {
+  padding: 8px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: #1e40af;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  font-size: 13.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  position: relative;
+}
+
+.bubble th:last-child {
+  border-right: none;
+}
+
+.bubble td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  color: #374151;
+  font-size: 13.8px;
+  line-height: 1.6;
+  background: #ffffff;
+  transition: background-color 0.2s ease;
+}
+
+.bubble td:last-child {
+  border-right: none;
+}
+
+.bubble tbody tr:hover td {
+  background: #f0f9ff;
+}
+
+.bubble tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bubble tbody tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+.bubble tbody tr:nth-child(even):hover td {
+  background: #e0f2fe;
+}
+
+/* Table responsive wrapper */
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.table-wrapper table {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* Table header styling */
+.bubble thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #1e40af;
+}
+
+/* Number alignment for numeric columns */
+.bubble td[data-numeric="true"] {
+  text-align: right;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #059669;
+}
+
+/* Table caption styling */
+.bubble table caption {
+  caption-side: bottom;
+  padding: 10px 15px;
+  color: #6b7280;
+  font-size: 12px;
+  text-align: center;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  font-style: italic;
+}
+
+/* Mobile responsive tables */
+@media (max-width: 768px) {
+  .bubble table {
+    font-size: 13px;
+  }
+  
+  .bubble th,
+  .bubble td {
+    padding: 12px 16px;
+  }
+  
+  .bubble th:first-child,
+  .bubble td:first-child {
+    padding-left: 16px;
+  }
+  
+  .bubble th:last-child,
+  .bubble td:last-child {
+    padding-right: 16px;
+  }
+  
+  .bubble th {
+    font-size: 12px;
+  }
+}
+
+/* Very small screens - convert to card layout */
+@media (max-width: 480px) {
+  .table-wrapper {
+    overflow: visible;
+  }
+  
+  .bubble table,
+  .bubble thead,
+  .bubble tbody,
+  .bubble th,
+  .bubble td,
+  .bubble tr {
+    display: block;
+  }
+  
+  .bubble thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  .bubble tr {
+    border: 1px solid #e5e7eb;
+    margin-bottom: 12px;
+    padding: 16px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .bubble td {
+    border: none;
+    position: relative;
+    padding: 8px 0 8px 50%;
+    text-align: left;
+    background: transparent !important;
+  }
+  
+  .bubble td:before {
+    content: attr(data-label) ": ";
+    position: absolute;
+    left: 6px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    font-weight: 700;
+    color: #1e40af;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .bubble td[data-numeric="true"] {
+    text-align: left;
+    color: #059669;
+    font-weight: 600;
+  }
 }

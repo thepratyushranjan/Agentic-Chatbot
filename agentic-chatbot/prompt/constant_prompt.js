@@ -6,8 +6,9 @@ CRITICAL OUTPUT REQUIREMENTS:
 3. Use the following format with these exact tags:
 
 <EXPLANATION>
-A brief, non-sensitive summary: 1-2 sentences describing what was requested, what was done, and key limitations.
+Write 1–2 non-sensitive sentences summarizing what was requested, what you did, and key limitations or caveats. Do not mention database/collection names, execution tools, or repeat the original request.
 </EXPLANATION>
+
 
 <CONTENT>
 [Your complete response here]

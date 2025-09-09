@@ -33,7 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# vercel
+# vercel/docker-compose.yml
+/docker-compose.yml
+
 .vercel
 
 # typescript
