@@ -1,30 +1,9 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import {
-  Avatar,
-  Box,
-  Dialog,
-  DialogContent,
-  DialogTitle,
   Fab,
-  IconButton,
-  Paper,
-  Stack,
   Tooltip,
-  Typography,
-  Fade,
-  TextField,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import SendIcon from "@mui/icons-material/Send";
 import ChatIcon from "@mui/icons-material/Chat";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Button } from "@mui/material";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import ChatDialog from "./helper";
 
 export type ChatMessage = {
@@ -153,25 +132,23 @@ export default function ChatWidget() {
   };
 
   const listRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollRef = useRef<boolean>(false);
   const CHAT_MIN_HEIGHT = 110;
   const CHAT_MAX_HEIGHT = 400;
   const [chatBodyHeight, setChatBodyHeight] = useState<number>(CHAT_MIN_HEIGHT);
 
   // Auto-scroll to bottom with smooth animation
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTo({
-        top: listRef.current.scrollHeight,
-        behavior: isTyping ? "auto" : "smooth",
-      });
+    if (autoScrollRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+      autoScrollRef.current = false;
     }
-  }, [messages, open, isTyping]);
+  }, [messages]);
 
   // Dynamically size the chat body based on content
   useEffect(() => {
     if (!listRef.current) return;
     const contentHeight = listRef.current.scrollHeight;
-    console.log(contentHeight);
     const clamped = Math.max(
       CHAT_MIN_HEIGHT,
       Math.min(contentHeight, CHAT_MAX_HEIGHT)
@@ -184,7 +161,7 @@ export default function ChatWidget() {
     if (open && messages.length <= 1 && input === "") {
       setChatBodyHeight(CHAT_MIN_HEIGHT);
     }
-  }, [open]);
+  }, [open, messages, input]);
 
   // Poll MCP status
   useEffect(() => {
@@ -241,6 +218,8 @@ export default function ChatWidget() {
       timestamp: new Date(),
     };
 
+    // Enable auto-scroll only when user submits a query
+    autoScrollRef.current = true;
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
@@ -371,7 +350,7 @@ export default function ChatWidget() {
             throw new Error(evt.error || "Stream error");
           }
         } catch (e) {
-          console.error("Error parsing stream line:", e);
+          console.log("Error parsing stream line:", e);
         }
       };
 
@@ -387,7 +366,7 @@ export default function ChatWidget() {
         }
       }
     } catch (err) {
-      console.error("Error in handleSend:", err);
+      console.log("Error in handleSend:", err);
       setMessages((prev) => [
         ...prev,
         {
@@ -407,7 +386,7 @@ export default function ChatWidget() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isTyping) {
       e.preventDefault();
       handleSend();
     }
@@ -425,16 +404,23 @@ export default function ChatWidget() {
           aria-label="ask-ai"
           sx={{
             position: "fixed",
-            right: 24,
-            bottom: 24,
+            right: { xs: 16, sm: 24 },
+            bottom: { xs: 16, sm: 24 },
             zIndex: 1200,
             background: "linear-gradient(135deg, #1976d2 0%, #7b1fa2 100%)",
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            minHeight: { xs: 48, sm: 56 },
+            "& .MuiSvgIcon-root": { fontSize: { xs: 22, sm: 24 } },
             "&:hover": {
               background: "linear-gradient(135deg, #1565c0 0%, #6a1b9a 100%)",
-              transform: "scale(1.05)",
+              transform: { xs: "scale(1.03)", sm: "scale(1.05)" },
             },
             transition: "all 0.3s ease",
-            boxShadow: "0 8px 25px rgba(25, 118, 210, 0.3)",
+            boxShadow: {
+              xs: "0 6px 18px rgba(25, 118, 210, 0.28)",
+              sm: "0 8px 25px rgba(25, 118, 210, 0.3)",
+            },
           }}
         >
           <ChatIcon />
