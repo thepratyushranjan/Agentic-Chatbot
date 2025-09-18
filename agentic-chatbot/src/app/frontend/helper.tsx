@@ -13,18 +13,19 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AddIcon from "@mui/icons-material/Add";
 import { Button } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { RefObject } from "react";
 import { ChatMessage } from "./ChatWidget";
 
-// Enhanced table component for markdown
 function TableComponent({ children, ...props }) {
   return (
     <div className="table-wrapper bubble">
@@ -33,7 +34,6 @@ function TableComponent({ children, ...props }) {
   );
 }
 
-// Enhanced table cell component with numeric detection
 function TableCellComponent({
   children,
   ...props
@@ -52,7 +52,6 @@ function TableCellComponent({
   );
 }
 
-// Enhanced table header component
 function TableHeaderComponent({
   children,
   ...props
@@ -108,25 +107,29 @@ export default function ChatDialog({
   setInput,
   handleKeyDown,
 }: ChatProps) {
+  const isNarrow468 = useMediaQuery("(max-width:468px)");
   return (
     <Dialog
       open={open}
       onClose={handleClose}
       fullWidth
-    //   maxWidth="sm"
       slots={{ transition: Fade }}
       sx={{
         "& .MuiPaper-root": {
-            maxWidth: "740px",
+          maxWidth: {
+            xs: "100%",
+            sm: 740,
+          },
         },
         "& .MuiDialog-paper": {
           borderRadius: 3,
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
           overflow: "hidden",
+          m: { xs: 2, sm: 3 },
+          maxHeight: { xs: "calc(100% - 32px)", sm: "calc(100% - 48px)" },
         },
       }}
     >
-      {/* Enhanced Header */}
       <DialogTitle
         sx={{
           display: "flex",
@@ -186,51 +189,68 @@ export default function ChatDialog({
               Can I assist you with anything?
             </Typography>
           </Box>
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            onClick={resetChat}
+            sx={{
+              position: "absolute",
+              right: 65,
+              top: 15,
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              lineHeight: 1.2,
+              px: 1,
+              py: 1,
+              boxShadow: "0 2px 8px rgba(25,118,210,0.25)",
+              background: "linear-gradient(135deg, #1976d2 0%, #7b1fa2 100%)",
+              display: { xs: "none", sm: "inline-flex" },
+            }}
+          >
+            New chat
+          </Button>
+          <IconButton
+            onClick={resetChat}
+            sx={{
+              position: "absolute",
+              right: 58,
+              top: 14,
+              bgcolor: "action.hover",
+              display: { xs: "inline-flex", sm: "none" },
+              "&:hover": {
+                bgcolor: "action.selected",
+                transform: "scale(1.05)",
+              },
+              transition: "all 0.2s ease",
+            }}
+            aria-label="new-chat"
+          >
+            <AddIcon />
+          </IconButton>
+          <IconButton
+            onClick={handleClose}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 14,
+              bgcolor: "action.hover",
+              "&:hover": {
+                bgcolor: "action.selected",
+                transform: "scale(1.1)",
+              },
+              transition: "all 0.2s ease",
+            }}
+            aria-label="close"
+          >
+            <CloseIcon />
+          </IconButton>
         </Stack>
-        <Button
-          size="small"
-          variant="contained"
-          color="primary"
-          onClick={resetChat}
-          sx={{
-            position: "absolute",
-            right: 52,
-            top: 10,
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: "0.9rem",
-            lineHeight: 1.2,
-            px: 1,
-            py: 1,
-            boxShadow: "0 2px 8px rgba(25,118,210,0.25)",
-            background: "linear-gradient(135deg, #1976d2 0%, #7b1fa2 100%)",
-            marginRight: 1,
-          }}
-        >
-          New chat
-        </Button>
-        <IconButton
-          onClick={handleClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-            bgcolor: "action.hover",
-            "&:hover": {
-              bgcolor: "action.selected",
-              transform: "scale(1.1)",
-            },
-            transition: "all 0.2s ease",
-          }}
-          aria-label="close"
-        >
-          <CloseIcon />
-        </IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 2, pb: 2, px: 0 }}>
         <Stack spacing={2}>
-          {/* Messages Container */}
           <Box
             ref={listRef}
             sx={{
@@ -239,7 +259,6 @@ export default function ChatDialog({
               px: 0,
               py: 1,
               bgcolor: "transparent",
-              // Let JS control smooth vs auto to avoid jank during streaming
               scrollBehavior: "auto",
               transition: "height 0.3s ease",
               "&::-webkit-scrollbar": {
@@ -318,14 +337,14 @@ export default function ChatDialog({
                                     "&.Mui-expanded": {
                                       minHeight: "unset",
                                       border: "none",
-                                      margin: "auto", // Adjust margin when expanded to remove gaps
+                                      margin: "auto", 
                                     },
                                   },
                                   "& .MuiAccordionSummary-content": {
                                     margin: 0,
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: "0.25rem", // spacing between text & icon
+                                    gap: "0.25rem", 
                                     "&.Mui-expanded": {
                                       margin: 0,
                                     },
@@ -335,10 +354,10 @@ export default function ChatDialog({
                                     marginTop: "0.25rem",
                                   },
                                   "&:not(:last-child)": {
-                                    borderBottom: 0, // Remove bottom border for all but the last
+                                    borderBottom: 0, 
                                   },
                                   "&::before": {
-                                    display: "none", // Remove default pseudo-element border
+                                    display: "none", 
                                   },
                                 }}
                               >
@@ -436,6 +455,7 @@ export default function ChatDialog({
                                 flexDirection: "column",
                                 alignItems: "start",
                                 justifyContent: "start",
+                                width: "100%",
                               }}
                             >
                               {msg.followUps.map((q, qi) => (
@@ -445,6 +465,7 @@ export default function ChatDialog({
                                   variant="contained"
                                   color="secondary"
                                   onClick={() => handleFollowUpClick(q)}
+                                  fullWidth={isNarrow468}
                                   style={{
                                     marginLeft: 0,
                                   }}
@@ -457,7 +478,16 @@ export default function ChatDialog({
                                       background: "#F0F0F0",
                                     },
                                     color: "#6a11cb",
-                                    textWrap: "nowrap",
+                                    whiteSpace: "normal",
+                                    wordBreak: {
+                                      xs: "break-word",
+                                      sm: "normal",
+                                    },
+                                    overflowWrap: "anywhere",
+                                    maxWidth: "100%",
+                                    textAlign: "left",
+                                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                    py: { xs: 0.5, sm: 0.75 },
                                   }}
                                 >
                                   {q}
@@ -485,7 +515,6 @@ export default function ChatDialog({
                       </Paper>
                     </Box>
 
-                    {/* Avatars removed to make messages full-width and left-aligned */}
                   </Stack>
                 );
                 return msg.role === "assistant" ? (
@@ -497,7 +526,6 @@ export default function ChatDialog({
                 );
               })}
 
-              {/* Typing Indicator */}
               {isTyping && (
                 <Fade in={true}>
                   <Stack
@@ -566,7 +594,6 @@ export default function ChatDialog({
             </Stack>
           </Box>
 
-          {/* Enhanced Input Area */}
           <Box sx={{ mt: 1 }}>
             <Paper
               variant="outlined"
