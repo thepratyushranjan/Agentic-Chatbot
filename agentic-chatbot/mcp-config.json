@@ -1,17 +1,22 @@
 {
-    "mongodb": {
-        "command": "docker",
-        "args": [
-            "run",
-            "-i",
-            "--rm",
-            "--network=host",
-            "-e",
-            "MDB_MCP_CONNECTION_STRING",
-            "mcp/mongodb"
-        ],
-        "env": {
-            "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017/"
-        }
+  "mongodb": {
+    "command": "docker",
+    "args": [
+      "run",
+      "-i",
+      "--rm",
+      "--network=host",
+      "-e",
+      "MDB_MCP_CONNECTION_STRING",
+      "mcp/mongodb"
+    ],
+    "env": {
+      "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017/"
     }
+  },
+
+  "mariadb-mcp-server": {
+    "url": "http://localhost:9001/sse",
+    "type": "sse"
+  }
 }
